@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
     algorithm: str = "HS256"
 
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.1"
+    ollama_timeout_seconds: float = 180
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

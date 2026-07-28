@@ -20,7 +20,9 @@ export const isMockMode = () => !BASE_URL;
 
 export const http = axios.create({
   baseURL: BASE_URL || "/api",
-  timeout: 15000,
+  // Ollama-backed /ai/* calls can take well over the default 15s; keep in sync
+  // with backend OLLAMA_TIMEOUT_SECONDS (180).
+  timeout: 180_000,
 });
 
 http.interceptors.request.use((config) => {

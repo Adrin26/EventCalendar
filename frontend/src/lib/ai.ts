@@ -1,7 +1,7 @@
 // Thin wrapper around AI endpoints on the FastAPI backend. Each function
 // posts to /ai/* when a base URL is configured. Otherwise a lightweight
 // on-device heuristic runs so preview features stay demonstrable.
-import { http, isMockMode } from "./api";
+import { http, isMockMode, cancelEvent, updateEvent, softDeleteEvent } from "./api";
 import { mockApi } from "./mock-store";
 import type { CareerEvent } from "./types";
 
@@ -99,9 +99,9 @@ export async function planNLCommand(command: string): Promise<NLCommandPlan> {
 export async function applyNLPlan(plan: NLCommandPlan, user: import("./types").User | null) {
   for (const a of plan.actions) {
     for (const id of a.target_ids) {
-      if (a.op === "cancel") mockApi.cancelEvent(id, user);
-      else if (a.op === "update" && a.changes) mockApi.updateEvent(id, a.changes, user, "ai-updated");
-      else if (a.op === "delete") mockApi.softDeleteEvent(id, user);
+      if (a.op === "cancel") await cancelEvent(id, user);
+      else if (a.op === "update" && a.changes) await updateEvent(id, a.changes, user, "ai-updated");
+      else if (a.op === "delete") await softDeleteEvent(id, user);
     }
   }
 }
