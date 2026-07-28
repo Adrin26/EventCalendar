@@ -68,6 +68,7 @@ export function CalendarView({
         editable={editable}
         eventStartEditable={editable}
         droppable={editable}
+        fixedMirrorParent={typeof document !== "undefined" ? document.body : undefined}
         height="auto"
         dayMaxEvents={3}
         eventClick={(arg: EventClickArg) => {
