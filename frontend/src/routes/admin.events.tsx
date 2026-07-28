@@ -202,6 +202,14 @@ function EventsAdmin() {
         onOpenChange={setOpenForm}
         initial={editing}
         onSubmit={handleFormSubmit}
+        onDelete={
+          editing
+            ? async () => {
+                await mDelete.mutateAsync(editing.id);
+                setEditing(null);
+              }
+            : undefined
+        }
       />
       <EventDetailDialog event={selected} open={!!selected} onOpenChange={(o) => !o && setSelected(null)} />
     </div>

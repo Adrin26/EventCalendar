@@ -40,11 +40,13 @@ export function EventFormDialog({
   onOpenChange,
   initial,
   onSubmit,
+  onDelete,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   initial?: CareerEvent | null;
   onSubmit: (values: EventFormValues) => Promise<void>;
+  onDelete?: () => Promise<void>;
 }) {
   const [values, setValues] = useState<EventFormValues>(empty);
   const [conflicts, setConflicts] = useState<CareerEvent[]>([]);
@@ -134,6 +136,20 @@ export function EventFormDialog({
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!initial || !onDelete) return;
+    if (!confirm(`Delete "${initial.title}"?`)) return;
+    setSaving(true);
+    try {
+      await onDelete();
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setSaving(false);
     }
@@ -233,17 +249,26 @@ export function EventFormDialog({
           </Alert>
         )}
 
-        <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          {conflicts.length > 0 && (
-            <Button variant="outline" onClick={() => handleSave(true)} disabled={saving}>
-              Save anyway
+        <DialogFooter className="gap-2 sm:justify-between">
+          <div>
+            {initial && onDelete && initial.status !== "deleted" && (
+              <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+                Delete
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            {conflicts.length > 0 && (
+              <Button variant="outline" onClick={() => handleSave(true)} disabled={saving}>
+                Save anyway
+              </Button>
+            )}
+            <Button onClick={() => handleSave(false)} disabled={saving}>
+              {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+              {initial ? "Save changes" : "Create event"}
             </Button>
-          )}
-          <Button onClick={() => handleSave(false)} disabled={saving}>
-            {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-            {initial ? "Save changes" : "Create event"}
-          </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
