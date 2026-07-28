@@ -16,9 +16,18 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.1"
     ollama_timeout_seconds: float = 180
 
+    # When set, AI features prefer Gemini; otherwise Ollama is used.
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.0-flash"
+    gemini_timeout_seconds: float = 60
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def use_gemini(self) -> bool:
+        return bool(self.gemini_api_key.strip())
 
 
 @lru_cache

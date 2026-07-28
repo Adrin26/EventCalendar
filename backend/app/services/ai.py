@@ -1,4 +1,4 @@
-"""AI feature implementations backed by Ollama (llama3.1) with heuristic fallbacks."""
+"""AI feature implementations backed by Gemini (preferred) or Ollama, with heuristic fallbacks."""
 
 from __future__ import annotations
 
@@ -16,9 +16,9 @@ from app.schemas import (
     NLAction,
     NLCommandPlan,
 )
-from app.services import ollama_client
+from app.services import llm
 from app.services.events import search_events
-from app.services.ollama_client import OllamaError
+from app.services.llm import LLMError
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ def _heuristic_description(payload: DescriptionRequest) -> str:
 
 
 def generate_description(payload: DescriptionRequest) -> str:
-    """Generate an event description via Ollama; fall back to a template on failure."""
+    """Generate an event description via LLM; fall back to a template on failure."""
     prompt = (
         "Write a short professional event description for a Malaysia career-fair calendar.\n"
         "Rules: 2–3 sentences only. No markdown, no bullet points, no hashtags. "
@@ -107,7 +107,7 @@ def generate_description(payload: DescriptionRequest) -> str:
         f"Event type: {payload.event_type.replace('-', ' ')}\n"
     )
     try:
-        text = ollama_client.chat(
+        text = llm.chat(
             [
                 {
                     "role": "system",
@@ -121,8 +121,8 @@ def generate_description(payload: DescriptionRequest) -> str:
             temperature=0.5,
         )
         return text.strip().strip('"')
-    except OllamaError:
-        logger.info("Ollama unavailable for description; using heuristic")
+    except LLMError:
+        logger.info("LLM unavailable for description; using heuristic")
         return _heuristic_description(payload)
 
 
@@ -330,7 +330,7 @@ def _filter_ids_by_command_acronyms(
 
 
 def plan_nl_command(db: Session, command: str) -> NLCommandPlan:
-    """Interpret an admin NL command via Ollama; fall back to keyword parsing."""
+    """Interpret an admin NL command via LLM; fall back to keyword parsing."""
     events = [e for e in db.query(CareerEvent).all() if e.status not in ("cancelled", "deleted")]
     known_ids = {e.id for e in events}
     id_to_title = {e.id: e.title for e in events}
@@ -359,7 +359,7 @@ def plan_nl_command(db: Session, command: str) -> NLCommandPlan:
     )
 
     try:
-        content = ollama_client.chat(
+        content = llm.chat(
             [
                 {
                     "role": "system",
@@ -378,8 +378,8 @@ def plan_nl_command(db: Session, command: str) -> NLCommandPlan:
         if not isinstance(raw, dict):
             raise ValueError("expected JSON object")
         return _validate_nl_plan(raw, known_ids, id_to_title, events_by_id, command)
-    except (OllamaError, json.JSONDecodeError, ValueError, TypeError) as exc:
-        logger.info("Ollama NL planning failed (%s); using heuristic", exc)
+    except (LLMError, json.JSONDecodeError, ValueError, TypeError) as exc:
+        logger.info("LLM NL planning failed (%s); using heuristic", exc)
         return _heuristic_nl_command(db, command)
 
 
@@ -409,7 +409,7 @@ def _heuristic_rag(db: Session, question: str) -> ChatAnswer:
 
 
 def rag_chat(db: Session, question: str) -> ChatAnswer:
-    """Retrieve matching events, then ask Ollama to answer from that context only."""
+    """Retrieve matching events, then ask the LLM to answer from that context only."""
     sources = search_events(db, question, limit=8)
     if not sources:
         # Broaden: if keyword search is empty, still try a short LLM apology via heuristic.
@@ -435,7 +435,7 @@ def rag_chat(db: Session, question: str) -> ChatAnswer:
     )
 
     try:
-        answer = ollama_client.chat(
+        answer = llm.chat(
             [
                 {
                     "role": "system",
@@ -449,8 +449,8 @@ def rag_chat(db: Session, question: str) -> ChatAnswer:
             temperature=0.3,
         )
         return ChatAnswer(answer=answer, sources=sources)
-    except OllamaError:
-        logger.info("Ollama unavailable for chat; using heuristic")
+    except LLMError:
+        logger.info("LLM unavailable for chat; using heuristic")
         return _heuristic_rag(db, question)
 
 
